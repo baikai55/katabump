@@ -235,19 +235,32 @@ async function launchChrome() {
 
     const chrome = spawn(CHROME_PATH, args, {
         detached: true,
-        stdio: 'ignore'
+        stdio: ['ignore', 'ignore', 'pipe']
     });
+    if (chrome.stderr) chrome.stderr.on('data', d => console.log('[chrome-stderr]', String(d).slice(0, 300)));
+    chrome.on('error', e => console.log('[chrome-spawn-error]', e.message));
+    chrome.on('exit', c => console.log('[chrome-exit] code=' + c));
     chrome.unref();
 
     console.log(' Chrome ...');
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 90; i++) {
         if (await checkPort(DEBUG_PORT)) break;
         await new Promise(r => setTimeout(r, 1000));
     }
 
     if (!await checkPort(DEBUG_PORT)) {
         console.error('Chrome  ' + DEBUG_PORT + ' ');
-        throw new Error('Chrome ');
+        await new Promise(r => exec('tasklist | findstr /i chrome', (e, out) => { console.log('[tasklist-chrome]'); console.log(out || '(no chrome processes found)'); r(); }));
+        console.log('[retry] trying headless mode...');
+        args.push('--headless=new');
+        const chrome2 = spawn(CHROME_PATH, args, { detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+        if (chrome2.stderr) chrome2.stderr.on('data', d => console.log('[chrome2-stderr]', String(d).slice(0, 300)));
+        chrome2.on('error', e => console.log('[chrome2-spawn-error]', e.message));
+        chrome2.on('exit', c => console.log('[chrome2-exit] code=' + c));
+        chrome2.unref();
+        let ok2 = false;
+        for (let i = 0; i < 45; i++) { if (await checkPort(DEBUG_PORT)) { ok2 = true; break; } await new Promise(r => setTimeout(r, 1000)); }
+        if (!ok2) throw new Error('Chrome launch failed');
     }
 }
 

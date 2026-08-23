@@ -222,7 +222,7 @@ async function launchChrome() {
         '--window-size=1280,720',
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        (process.platform === 'win32' ? require('path').join(process.env.TEMP || 'C:\\Temp', 'chrome_user_data') : '/tmp/chrome_user_data') // 
+        '--user-data-dir=' + (process.platform === 'win32' ? require('path').join(process.env.TEMP || 'C:\\Temp', 'chrome_user_data') : '/tmp/chrome_user_data') // 
     ];
 
     if (PROXY_CONFIG) {
@@ -696,7 +696,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew", maxAttempts = 15,
             console.log('...');
             try {
                 const emailInput = page.getByRole('textbox', { name: 'Email' });
-                await emailInput.waitFor({ state: 'visible', timeout: 5000 });
+                await emailInput.waitFor({ state: 'visible', timeout: 20000 });
                 await emailInput.fill(user.username);
                 const pwdInput = page.getByRole('textbox', { name: 'Password' });
                 await pwdInput.fill(user.password);

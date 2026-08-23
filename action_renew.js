@@ -16,7 +16,7 @@ const SINGBOX_LOCAL_PROXY = 'http://127.0.0.1:8080';
 async function sendTelegramMessage(message, imagePath = null) {
     if (!TG_BOT_TOKEN || !TG_CHAT_ID) return;
 
-    // 1. 发送文字消息
+    // 1. 
     try {
         const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
         await axios.post(url, {
@@ -29,11 +29,11 @@ async function sendTelegramMessage(message, imagePath = null) {
         console.error('[Telegram] Failed to send message:', e.message);
     }
 
-    // 2. 发送图片 (如果有)
+    // 2.  ()
     if (imagePath && fs.existsSync(imagePath)) {
         console.log('[Telegram] Sending photo...');
-        // 使用 curl 发送图片，避免引入额外的 multipart 依赖
-        // 注意：Windows 本地测试可能需要环境支持 curl，GitHub Actions (Ubuntu) 默认支持
+        //  curl  multipart 
+        // Windows  curlGitHub Actions (Ubuntu) 
         const cmd = `curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto" -F chat_id="${TG_CHAT_ID}" -F photo="@${imagePath}"`;
         await new Promise(resolve => {
             exec(cmd, (err) => {
@@ -45,10 +45,10 @@ async function sendTelegramMessage(message, imagePath = null) {
     }
 }
 
-// 启用 stealth 插件
+//  stealth 
 chromium.use(stealth);
 
-// GitHub Actions 环境下的 Chrome 路径 (通常是 google-chrome)
+// GitHub Actions  Chrome  ( google-chrome)
 const CHROME_PATH = process.env.CHROME_PATH || '/usr/bin/google-chrome';
 const DEBUG_PORT = 9222;
 
@@ -104,7 +104,7 @@ const INJECTED_SCRIPT = `
 (function() {
     if (window.self === window.top) return;
 
-    // 1. 模拟鼠标屏幕坐标
+    // 1. 
     try {
         function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -116,7 +116,7 @@ const INJECTED_SCRIPT = `
         Object.defineProperty(MouseEvent.prototype, 'screenY', { value: screenY });
     } catch (e) { }
 
-    // 2. 简单的 attachShadow Hook
+    // 2.  attachShadow Hook
     try {
         const originalAttachShadow = Element.prototype.attachShadow;
         
@@ -148,12 +148,12 @@ const INJECTED_SCRIPT = `
             return shadowRoot;
         };
     } catch (e) {
-        console.error('[注入] Hook attachShadow 失败:', e);
+        console.error('[] Hook attachShadow :', e);
     }
 })();
 `;
 
-// 辅助函数：检测代理是否可用
+// 
 async function checkProxy() {
   if (!PROXY_CONFIG) return true;
 
@@ -205,32 +205,32 @@ function checkPort(port) {
 }
 
 async function launchChrome() {
-    console.log('检查 Chrome 是否已在端口 ' + DEBUG_PORT + ' 上运行...');
+    console.log(' Chrome  ' + DEBUG_PORT + ' ...');
     if (await checkPort(DEBUG_PORT)) {
-        console.log('Chrome 已开启。');
+        console.log('Chrome ');
         return;
     }
 
-    console.log(`正在启动 Chrome (路径: ${CHROME_PATH})...`);
+    console.log(` Chrome (: ${CHROME_PATH})...`);
 
     const args = [
         `--remote-debugging-port=${DEBUG_PORT}`,
         '--no-first-run',
         '--no-default-browser-check',
-        // '--headless=new', // (已被注释) 使用 xvfb-run 时不需要 headless 模式，这样可以模拟有头浏览器增加成功率
+        // '--headless=new', // ()  xvfb-run  headless 
         '--disable-gpu',
         '--window-size=1280,720',
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--user-data-dir=/tmp/chrome_user_data' // 必须指定用户数据目录，否则远程调试可能失败
+        (process.platform === 'win32' ? require('path').join(process.env.TEMP || 'C:\\Temp', 'chrome_user_data') : '/tmp/chrome_user_data') // 
     ];
 
     if (PROXY_CONFIG) {
         args.push(`--proxy-server=${PROXY_CONFIG.server}`);
         args.push('--proxy-bypass-list=<-loopback>');
     }
-    // 添加针对 Linux 环境的额外稳定性参数
-    args.push('--disable-dev-shm-usage'); // 避免共享内存不足
+    //  Linux 
+    args.push('--disable-dev-shm-usage'); // 
 
 
     const chrome = spawn(CHROME_PATH, args, {
@@ -239,20 +239,20 @@ async function launchChrome() {
     });
     chrome.unref();
 
-    console.log('正在等待 Chrome 初始化...');
-    for (let i = 0; i < 20; i++) {
+    console.log(' Chrome ...');
+    for (let i = 0; i < 60; i++) {
         if (await checkPort(DEBUG_PORT)) break;
         await new Promise(r => setTimeout(r, 1000));
     }
 
     if (!await checkPort(DEBUG_PORT)) {
-        console.error('Chrome 无法在端口 ' + DEBUG_PORT + ' 上启动');
-        throw new Error('Chrome 启动失败');
+        console.error('Chrome  ' + DEBUG_PORT + ' ');
+        throw new Error('Chrome ');
     }
 }
 
 function getUsers() {
-    // 从环境变量读取 JSON 字符串
+    //  JSON 
     // GitHub Actions Secret: USERS_JSON = [{"username":..., "password":...}]
     try {
         if (process.env.USERS_JSON) {
@@ -260,7 +260,7 @@ function getUsers() {
             return Array.isArray(parsed) ? parsed : (parsed.users || []);
         }
     } catch (e) {
-        console.error('解析 USERS_JSON 环境变量错误:', e);
+        console.error(' USERS_JSON :', e);
     }
     return [];
 }
@@ -272,7 +272,7 @@ async function attemptTurnstileCdp(page) {
             const data = await frame.evaluate(() => window.__turnstile_data).catch(() => null);
 
             if (data) {
-                console.log('>> 在 frame 中发现 Turnstile。比例:', data);
+                console.log('>>  frame  Turnstile:', data);
 
                 const iframeElement = await frame.frameElement();
                 if (!iframeElement) continue;
@@ -283,7 +283,7 @@ async function attemptTurnstileCdp(page) {
                 const clickX = box.x + (box.width * data.xRatio);
                 const clickY = box.y + (box.height * data.yRatio);
 
-                console.log(`>> 计算点击坐标: (${clickX.toFixed(2)}, ${clickY.toFixed(2)})`);
+                console.log(`>> : (${clickX.toFixed(2)}, ${clickY.toFixed(2)})`);
 
                 const client = await page.context().newCDPSession(page);
 
@@ -305,7 +305,7 @@ async function attemptTurnstileCdp(page) {
                     clickCount: 1
                 });
 
-                console.log('>> CDP 点击已发送。');
+                console.log('>> CDP ');
                 await client.detach();
                 return true;
             }
@@ -314,7 +314,7 @@ async function attemptTurnstileCdp(page) {
     return false;
 }
 
-// --- 辅助函数：通过 CDP 派发鼠标点击事件 ---
+// ---  CDP  ---
 async function dispatchCdpClick(page, x, y) {
     const client = await page.context().newCDPSession(page);
     try {
@@ -325,7 +325,7 @@ async function dispatchCdpClick(page, x, y) {
             button: 'left',
             clickCount: 1
         });
-        await new Promise(r => setTimeout(r, 50 + Math.random() * 100)); // 模拟人手点击延迟
+        await new Promise(r => setTimeout(r, 50 + Math.random() * 100)); // 
         await client.send('Input.dispatchMouseEvent', {
             type: 'mouseReleased',
             x: x,
@@ -333,10 +333,10 @@ async function dispatchCdpClick(page, x, y) {
             button: 'left',
             clickCount: 1
         });
-        console.log(`>> CDP 坐标 (${x.toFixed(2)}, ${y.toFixed(2)}) 点击已发送。`);
+        console.log(`>> CDP  (${x.toFixed(2)}, ${y.toFixed(2)}) `);
         return true;
     } catch (e) {
-        console.log('>> CDP 点击失败:', e.message);
+        console.log('>> CDP :', e.message);
         return false;
     } finally {
         await client.detach().catch(() => {});
@@ -344,7 +344,7 @@ async function dispatchCdpClick(page, x, y) {
 }
 
 // ==========================================
-// ========== ALTCHA专区 (Renew用) ==========
+// ========== ALTCHA (Renew) ==========
 // ==========================================
 async function getAltchaStatus(page) {
     try {
@@ -427,7 +427,7 @@ async function attemptAltchaClick(page, currentStatus = null) {
             const status = currentStatus || await getAltchaStatus(page);
             if (status.solved) return false;
             if (status.isVerifying) {
-                console.log(`>> ALTCHA 正在验证中，跳过重复点击。${formatAltchaStatus(status)}`);
+                console.log(`>> ALTCHA ${formatAltchaStatus(status)}`);
                 return false;
             }
 
@@ -466,11 +466,11 @@ async function attemptAltchaClick(page, currentStatus = null) {
                 if (boxInfo.isExact) {
                     clickX = boxInfo.x + boxInfo.width / 2;
                     clickY = boxInfo.y + boxInfo.height / 2;
-                    console.log(`>> 发现 ALTCHA 内部点击目标 <${boxInfo.tagName}>，精确计算坐标: (${clickX.toFixed(2)}, ${clickY.toFixed(2)})`);
+                    console.log(`>>  ALTCHA  <${boxInfo.tagName}>: (${clickX.toFixed(2)}, ${clickY.toFixed(2)})`);
                 } else {
                     clickX = boxInfo.x + Math.min(25, Math.max(12, boxInfo.width * 0.15));
                     clickY = boxInfo.y + boxInfo.height / 2;
-                    console.log(`>> 未获取内部复选框，使用估算坐标: (${clickX.toFixed(2)}, ${clickY.toFixed(2)})`);
+                    console.log(`>> : (${clickX.toFixed(2)}, ${clickY.toFixed(2)})`);
                 }
 
                 await dispatchCdpClick(page, clickX, clickY);
@@ -487,17 +487,17 @@ async function attemptAltchaClick(page, currentStatus = null) {
 
                 return true;
             } else {
-                console.log('>> 找到了 ALTCHA 元素，但获取不到有效大小，跳过点击。');
+                console.log('>>  ALTCHA ');
             }
         }
     } catch (e) {
-        console.log('>> 尝试查找 ALTCHA 时出错:', e.message);
+        console.log('>>  ALTCHA :', e.message);
     }
     return false;
 }
 
-async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts = 15, waitAfterClick = 8000) {
-    console.log(`[${stageName}] 开始检测 ALTCHA Captcha...`);
+async function solveAltchaIfPresent(page, stageName = "Renew", maxAttempts = 15, waitAfterClick = 8000) {
+    console.log(`[${stageName}]  ALTCHA Captcha...`);
     let sawAltcha = false;
 
     const startedAt = Date.now();
@@ -511,12 +511,12 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
 
         const statusText = formatAltchaStatus(status);
         if (status.exists && statusText !== lastStatusText) {
-            console.log(`[${stageName}] ALTCHA 状态: ${statusText}`);
+            console.log(`[${stageName}] ALTCHA : ${statusText}`);
             lastStatusText = statusText;
         }
 
         if (status.solved) {
-            console.log(`[${stageName}] ✅ ALTCHA 已通过验证。`);
+            console.log(`[${stageName}]  ALTCHA `);
             return true;
         }
 
@@ -531,7 +531,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
         }
 
         if (clickAttempts >= maxAttempts) {
-            console.log(`[${stageName}] 已达到 ALTCHA 最大点击次数 (${maxAttempts})，继续等待最终结果...`);
+            console.log(`[${stageName}]  ALTCHA  (${maxAttempts})...`);
             await page.waitForTimeout(1000);
             continue;
         }
@@ -543,7 +543,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
         }
 
         clickAttempts += 1;
-        console.log(`[${stageName}] 已点击 ALTCHA，等待 PoW 哈希计算完成 (${waitAfterClick}ms)，当前点击 ${clickAttempts}/${maxAttempts}...`);
+        console.log(`[${stageName}]  ALTCHA PoW  (${waitAfterClick}ms) ${clickAttempts}/${maxAttempts}...`);
 
         const clickStartedAt = Date.now();
         let observedVerification = false;
@@ -556,12 +556,12 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
 
             const followupText = formatAltchaStatus(followupStatus);
             if (followupStatus.exists && followupText !== lastStatusText) {
-                console.log(`[${stageName}] ALTCHA 状态: ${followupText}`);
+                console.log(`[${stageName}] ALTCHA : ${followupText}`);
                 lastStatusText = followupText;
             }
 
             if (followupStatus.solved) {
-                console.log(`[${stageName}] ✅ ALTCHA 验证通过 (PoW 计算完成)！`);
+                console.log(`[${stageName}]  ALTCHA  (PoW )`);
                 return true;
             }
 
@@ -571,19 +571,19 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
             }
 
             if (!observedVerification && Date.now() - clickStartedAt >= 2500) {
-                console.log(`[${stageName}] ⚠️ 点击后未观察到 ALTCHA 进入 verifying 状态，准备重新尝试点击...`);
+                console.log(`[${stageName}]   ALTCHA  verifying ...`);
                 break;
             }
         }
     }
 
     if (!sawAltcha) {
-        console.log(`[${stageName}] 弹窗中未检测到 ALTCHA 组件。`);
+        console.log(`[${stageName}]  ALTCHA `);
         return true;
     }
 
     const finalStatus = await getAltchaStatus(page);
-    console.log(`[${stageName}] 检测到 ALTCHA，但在 ${Math.ceil((Date.now() - startedAt) / 1000)} 秒内未能通过验证。最终状态: ${formatAltchaStatus(finalStatus)}`);
+    console.log(`[${stageName}]  ALTCHA ${Math.ceil((Date.now() - startedAt) / 1000)} : ${formatAltchaStatus(finalStatus)}`);
     return false;
 }
 
@@ -603,7 +603,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
 
   const users = getUsers();
   if (users.length === 0) {
-    console.log('未在 process.env.USERS_JSON 中找到用户');
+    console.log(' process.env.USERS_JSON ');
     process.exit(1);
   }
 
@@ -612,28 +612,28 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
   if (PROXY_CONFIG) {
         const isValid = await checkProxy();
         if (!isValid) {
-            console.error('[代理] 代理无效，终止运行。');
+            console.error('[] ');
             process.exit(1);
         }
     }
 
     await launchChrome();
 
-    console.log(`正在连接 Chrome...`);
+    console.log(` Chrome...`);
     let browser;
     for (let k = 0; k < 5; k++) {
         try {
             browser = await chromium.connectOverCDP(`http://localhost:${DEBUG_PORT}`);
-            console.log('连接成功！');
+            console.log('');
             break;
         } catch (e) {
-            console.log(`连接尝试 ${k + 1} 失败。2秒后重试...`);
+            console.log(` ${k + 1} 2...`);
             await new Promise(r => setTimeout(r, 2000));
         }
     }
 
     if (!browser) {
-        console.error('连接失败。退出。');
+        console.error('');
         process.exit(1);
     }
 
@@ -642,7 +642,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
     page.setDefaultTimeout(60000);
 
     if (PROXY_CONFIG && PROXY_CONFIG.username) {
-        console.log('[代理] 正在设置认证...');
+        console.log('[] ...');
         await context.setHTTPCredentials({
             username: PROXY_CONFIG.username,
             password: PROXY_CONFIG.password
@@ -652,11 +652,11 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
     }
 
     await page.addInitScript(INJECTED_SCRIPT);
-    console.log('注入脚本已添加。');
+    console.log('');
 
     for (let i = 0; i < users.length; i++) {
         const user = users[i];
-        console.log(`\n=== 正在处理用户 ${i + 1}/${users.length} ===`); // 隐去具体邮箱 logging
+        console.log(`\n===  ${i + 1}/${users.length} ===`); //  logging
 
         try {
             if (page.isClosed()) {
@@ -665,22 +665,22 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                 await page.addInitScript(INJECTED_SCRIPT);
             }
 
-            // --- 登录逻辑 (简略版，逻辑一致) ---
+            // ---  () ---
             if (page.url().includes('dashboard')) {
                 await page.goto('https://dashboard.katabump.com/auth/logout');
                 await page.waitForTimeout(2000);
             }
-            // 总是先去登录页
+            // 
             await page.goto('https://dashboard.katabump.com/auth/login');
             await page.waitForTimeout(2000);
             if (page.url().includes('dashboard')) {
-                // 如果登出没成功，再次登出
+                // 
                 await page.goto('https://dashboard.katabump.com/auth/logout');
                 await page.waitForTimeout(2000);
                 await page.goto('https://dashboard.katabump.com/auth/login');
             }
 
-            console.log('正在输入凭据...');
+            console.log('...');
             try {
                 const emailInput = page.getByRole('textbox', { name: 'Email' });
                 await emailInput.waitFor({ state: 'visible', timeout: 5000 });
@@ -690,7 +690,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                 await page.waitForTimeout(500);
 
                 // --- Cloudflare Turnstile Bypass for Login ---
-                console.log('   >> 正在登录前检查 Turnstile (使用 CDP 绕过)...');
+                console.log('   >>  Turnstile ( CDP )...');
                 let cdpClickResult = false;
                 for (let findAttempt = 0; findAttempt < 15; findAttempt++) {
                     cdpClickResult = await attemptTurnstileCdp(page);
@@ -699,7 +699,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                 }
 
                 if (cdpClickResult) {
-                    console.log('   >> 登录 CDP 点击生效。正在等待最多 10秒 Cloudflare 成功标志...');
+                    console.log('   >>  CDP  10 Cloudflare ...');
                     for (let waitSec = 0; waitSec < 10; waitSec++) {
                         const frames = page.frames();
                         let isSuccess = false;
@@ -714,13 +714,13 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                             }
                         }
                         if (isSuccess) {
-                            console.log('   >> 登录前 Turnstile 验证成功。');
+                            console.log('   >>  Turnstile ');
                             break;
                         }
                         await page.waitForTimeout(1000);
                     }
                 } else {
-                    console.log('   >> 登录前未检测到或未点击 Turnstile，继续操作...');
+                    console.log('   >>  Turnstile...');
                 }
                 // --------------------------------------------
 
@@ -730,90 +730,90 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                 try {
                     const errorMsg = page.getByText('Incorrect password or no account');
         if (await errorMsg.isVisible({ timeout: 3000 })) {
-          console.error(` >> ❌ 登录失败: 用户 ${user.username} 账号或密码错误`);
+          console.error(` >>  :  ${user.username} `);
           const failPhotoDir = path.join(process.cwd(), 'screenshots');
           if (!fs.existsSync(failPhotoDir)) fs.mkdirSync(failPhotoDir, { recursive: true });
           const failSafeName = user.username.replace(/[^a-z0-9]/gi, '_');
           const failShotPath = path.join(failPhotoDir, `${failSafeName}_login_fail.png`);
           try { await page.screenshot({ path: failShotPath, fullPage: true }); } catch (e) { }
 
-          await sendTelegramMessage(`❌ *登录失败*\n用户: ${user.username}\n原因: 账号或密码错误`, failShotPath);
+          await sendTelegramMessage(` **\n: ${user.username}\n: `, failShotPath);
 
                         continue;
                     }
                 } catch (e) { }
 
             } catch (e) {
-                console.log('登录错误:', e.message);
+                console.log(':', e.message);
             }
 
-            console.log('正在寻找 "See" 链接...');
+            console.log(' "See" ...');
             try {
                 await page.getByRole('link', { name: 'See' }).first().waitFor({ timeout: 15000 });
                 await page.waitForTimeout(1000);
                 await page.getByRole('link', { name: 'See' }).first().click();
             } catch (e) {
-                console.log('未找到 "See" 按钮。');
+                console.log(' "See" ');
                 continue;
             }
 
-            // --- Renew 逻辑 ---
+            // --- Renew  ---
             let renewSuccess = false;
-            // 2. 一个扁平化的主循环：尝试 Renew 整个流程 (最多 20 次)
+            // 2.  Renew  ( 20 )
             for (let attempt = 1; attempt <= 20; attempt++) {
                 let hasCaptchaError = false;
 
-                // 1. 如果是重试 (attempt > 1)，说明之前失败了或者刚刷新完页面
-                // 我们直接开始寻找 Renew 按钮
-                console.log(`\n[尝试 ${attempt}/20] 正在寻找 Renew 按钮...`);
+                // 1.  (attempt > 1)
+                //  Renew 
+                console.log(`\n[ ${attempt}/20]  Renew ...`);
 
                 const renewBtn = page.getByRole('button', { name: 'Renew', exact: true }).first();
                 try {
-                    // 稍微等待一下，防止页面刚刷新还没渲染出来
+                    // 
                     await renewBtn.waitFor({ state: 'visible', timeout: 5000 });
                 } catch (e) { }
 
                 if (await renewBtn.isVisible()) {
                     await renewBtn.click();
-                    console.log('Renew 按钮已点击。等待模态框...');
+                    console.log('Renew ...');
 
                     const modal = page.locator('#renew-modal');
                     try { await modal.waitFor({ state: 'visible', timeout: 5000 }); } catch (e) {
-                        console.log('模态框未出现？重试中...');
+                        console.log('...');
                         continue;
                     }
 
-                    // A. 在模态框里晃晃鼠标
+                    // A. 
                     try {
                         const box = await modal.boundingBox();
                         if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
                     } catch (e) { }
 
-                    // B. 找 Turnstile (小重试)
-                    console.log('正在检查 Turnstile (使用 CDP 绕过)...');
+                    // B.  Turnstile ()
+                    console.log(' Turnstile ( CDP )...');
                     let cdpClickResult = false;
                     for (let findAttempt = 0; findAttempt < 30; findAttempt++) {
                         cdpClickResult = await attemptTurnstileCdp(page);
                         if (cdpClickResult) break;
-                        console.log(`   >> [寻找尝试 ${findAttempt + 1}/30] 尚未找到 Turnstile 复选框...`);
+                        console.log(`   >> [ ${findAttempt + 1}/30]  Turnstile ...`);
                         await page.waitForTimeout(1000);
                     }
 
                     let isTurnstileSuccess = false;
                     if (cdpClickResult) {
-                        console.log('   >> CDP 点击生效。等待 8秒 Cloudflare 检查...');
+                        console.log('   >> CDP  8 Cloudflare ...');
                         await page.waitForTimeout(8000);
                     } else {
-                        console.log('   >> 重试后仍未确认 Turnstile 复选框。');
+                        console.log('   >>  Turnstile ');
                     }
 
-                    // C. 检查 Success 标志
+                    // C.  Success 
                     const frames = page.frames();
                     for (const f of frames) {
                         if (f.url().includes('cloudflare')) {
                             try {
                                 if (await f.getByText('Success!', { exact: false }).isVisible({ timeout: 500 })) {
-                                    console.log('   >> 在 Turnstile iframe 中检测到 "Success!"。');
+                                    console.log('   >>  Turnstile iframe  "Success!"');
                                     isTurnstileSuccess = true;
                                     break;
                                 }
@@ -821,21 +821,21 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                         }
                     }
 
-                    // D. ALTCHA Captcha 处理 (本地版本关键功能)
-                    const altchaOk = await solveAltchaIfPresent(page, "Renew弹窗", 15, 8000);
+                    // D. ALTCHA Captcha  ()
+                    const altchaOk = await solveAltchaIfPresent(page, "Renew", 15, 8000);
 
                     if (!altchaOk) {
-                        console.log('   >> ALTCHA 未通过，跳过确认按钮并刷新重试...');
+                        console.log('   >> ALTCHA ...');
                         await page.reload();
                         await page.waitForTimeout(3000);
                         if (page.url().includes('login')) {
-                            console.log('   >> 刷新后被重定向到登录页，退出。');
+                            console.log('   >> ');
                             break;
                         }
                         continue;
                     }
 
-                    // E. 准备点击确认
+                    // E. 
                     const confirmBtn = modal.getByRole('button', { name: 'Renew' });
                     if (await confirmBtn.isVisible()) {
 
@@ -848,11 +848,11 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                         const tsScreenshotName = `${safeUser}_Turnstile_${attempt}.png`;
                         try {
                             await page.screenshot({ path: path.join(photoDir, tsScreenshotName), fullPage: true });
-                            console.log(`   >> 📸 快照已保存: ${tsScreenshotName}`);
+                            console.log(`   >>  : ${tsScreenshotName}`);
                         } catch (e) { }
 
-                        // User Request: 找不到的话这个循环直接下一步点击renew，然后检测有没有Please complete the captcha to continue
-                        console.log('   >> 点击 Renew 确认按钮 (无论 Turnstile 状态如何)...');
+                        // User Request: renewPlease complete the captcha to continue
+                        console.log('   >>  Renew  ( Turnstile )...');
                         await confirmBtn.click();
 
                         try {
@@ -861,7 +861,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                             while (Date.now() - startVerifyTime < 3000) {
                                 // A. Captcha Error
                                 if (await page.getByText('Please complete the captcha to continue').isVisible()) {
-                                    console.log('   >> ⚠️ 检测到错误: "Please complete the captcha".');
+                                    console.log('   >>  : "Please complete the captcha".');
                                     hasCaptchaError = true;
                                     break;
                                 }
@@ -872,9 +872,9 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                                     const text = await notTimeLoc.innerText();
                                     const match = text.match(/as of\s+(.*?)\s+\(/);
                                     let dateStr = match ? match[1] : 'Unknown Date';
-                                    console.log(`   >> ⏳ 暂无法续期。下次可用时间: ${dateStr}`);
+                                    console.log(`   >>  : ${dateStr}`);
 
-                                    // 截图证明
+                                    // 
                                     const fs = require('fs');
                                     const path = require('path');
                                     const photoDir = path.join(process.cwd(), 'screenshots');
@@ -883,7 +883,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                                     const skipShotPath = path.join(photoDir, `${safeUser}_skip.png`);
                                     try { await page.screenshot({ path: skipShotPath, fullPage: true }); } catch (e) { }
 
-                                    await sendTelegramMessage(`⏳ *暂无法续期 (跳过)*\n用户: ${user.username}\n原因: 还没到时间\n下次可用: ${dateStr}`, skipShotPath);
+                                    await sendTelegramMessage(` * ()*\n: ${user.username}\n: \n: ${dateStr}`, skipShotPath);
 
                                     renewSuccess = true; // Mark as done to stop retries
                                     try {
@@ -902,15 +902,15 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                             console.log('   >> Error found. Refreshing page to reset Turnstile...');
                             await page.reload();
                             await page.waitForTimeout(3000);
-                            continue; // 刷新后，重新开始大循环
+                            continue; // 
                         }
 
-                        // F. 检查成功 (模态框消失)
+                        // F.  ()
                         await page.waitForTimeout(2000);
                         if (!await modal.isVisible()) {
-                            console.log('   >> ✅ Modal closed. Renew successful!');
+                            console.log('   >>  Modal closed. Renew successful!');
 
-                            // 截图成功状态
+                            // 
                             const fs = require('fs');
                             const path = require('path');
                             const photoDir = path.join(process.cwd(), 'screenshots');
@@ -919,24 +919,24 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
                             const successShotPath = path.join(photoDir, `${safeUser}_success.png`);
                             try { await page.screenshot({ path: successShotPath, fullPage: true }); } catch (e) { }
 
-                            await sendTelegramMessage(`✅ *续期成功*\n用户: ${user.username}\n状态: 服务器已成功续期！`, successShotPath);
+                            await sendTelegramMessage(` **\n: ${user.username}\n: `, successShotPath);
                             renewSuccess = true;
                             break;
                         } else {
-                            console.log('   >> 模态框仍打开但无错误？重试循环...');
+                            console.log('   >> ...');
                             await page.reload();
                             await page.waitForTimeout(3000);
                             continue;
                         }
                     } else {
-                        console.log('   >> 未找到模态框内的验证按钮？刷新中...');
+                        console.log('   >> ...');
                         await page.reload();
                         await page.waitForTimeout(3000);
                         continue;
                     }
 
                 } else {
-                    console.log('未找到 Renew 按钮 (服务器可能已续期或页面加载错误)。');
+                    console.log(' Renew  ()');
                     break;
                 }
             }
@@ -955,15 +955,15 @@ async function solveAltchaIfPresent(page, stageName = "Renew阶段", maxAttempts
         const screenshotPath = path.join(photoDir, `${safeUsername}.png`);
         try {
             await page.screenshot({ path: screenshotPath, fullPage: true });
-            console.log(`截图已保存至: ${screenshotPath}`);
+            console.log(`: ${screenshotPath}`);
         } catch (e) {
-            console.log('截图失败:', e.message);
+            console.log(':', e.message);
         }
 
-        console.log(`用户处理完成\n`);
+        console.log(`\n`);
     }
 
-    console.log('完成。');
+    console.log('');
     await browser.close();
     process.exit(0);
 })();

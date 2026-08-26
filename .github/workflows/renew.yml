@@ -4,33 +4,34 @@ on:
   schedule:
   # 每天 UTC 0点 (北京时间 8点) 运行
   - cron: '0 0 * * *'
+
   workflow_dispatch: # 允许手动触发
+
 
 jobs:
   renew:
     runs-on: windows-latest
 
+
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-
     - name: Install Dependencies
       run: npm install
-
     - name: Run Renew Script
       env:
         USERS_JSON: ${{ secrets.USERS_JSON }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         CHROME_PATH: 'C:\Program Files\Google\Chrome\Application\chrome.exe'
       run: node action_renew.js
-
     - name: Upload Screenshots
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: screenshots
         path: screenshots/
+    - name: Keepalive
+      uses: gautamkrishnar/keepalive-workflow@v2

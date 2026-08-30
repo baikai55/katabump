@@ -834,21 +834,7 @@ async function solveAltchaIfPresent(page, stageName = "Renew", maxAttempts = 15,
                         }
                     }
 
-                    // D. ALTCHA Captcha  ()
-                    const altchaOk = await solveAltchaIfPresent(page, "Renew", 15, 8000);
-
-                    if (!altchaOk) {
-                        console.log('   >> ALTCHA ...');
-                        await page.reload();
-                        await page.waitForTimeout(3000);
-                        if (page.url().includes('login')) {
-                            console.log('   >> ');
-                            break;
-                        }
-                        continue;
-                    }
-
-                    // E. 
+                    // D+E. Click the ALTCHA-wired Renew button (auto-solves PoW on submit)
                     const confirmBtn = modal.getByRole('button', { name: 'Renew' });
                     if (await confirmBtn.isVisible()) {
 

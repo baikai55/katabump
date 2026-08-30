@@ -33,5 +33,3 @@ jobs:
       with:
         name: screenshots
         path: screenshots/
-    - name: Keepalive
-      uses: gautamkrishnar/keepalive-workflow@v2

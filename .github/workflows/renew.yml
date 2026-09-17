@@ -8,6 +8,12 @@ on:
   workflow_dispatch: # 允许手动触发
 
 
+# GitHub 会在公开仓库连续 60 天没有提交活动后自动停用 schedule 工作流，
+# 而定时任务自身的运行不算仓库活动，因此需要一个写入权限来产生真实提交。
+permissions:
+  contents: write
+
+
 jobs:
   renew:
     runs-on: windows-latest
@@ -15,6 +21,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Keepalive
+      # 距上次提交满 30 天时补一次提交，重置 GitHub 的 60 天计时器。
+      # 不使用第三方 action（gautamkrishnar/keepalive-workflow 因违规已被 GitHub 停用）。
+      continue-on-error: true
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        NOW_TS=$(date +%s)
+        LAST_TS=$(git log -1 --format=%ct)
+        IDLE_DAYS=$(( (NOW_TS - LAST_TS) / 86400 ))
+        echo "Last commit was ${IDLE_DAYS} day(s) ago."
+
+        if [ "${IDLE_DAYS}" -lt 30 ]; then
+          echo "Recent activity detected, skipping keepalive commit."
+          exit 0
+        fi
+
+        echo "Idle for ${IDLE_DAYS} days, creating keepalive commit."
+        date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
+        git add .keepalive
+        git commit -m "chore: keepalive"
+        git push origin "HEAD:${GITHUB_REF_NAME:-main}"
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:

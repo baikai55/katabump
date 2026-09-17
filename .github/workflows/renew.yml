@@ -20,7 +20,7 @@ jobs:
 
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Keepalive
       # 距上次提交满 30 天时补一次提交，重置 GitHub 的 60 天计时器。
       # 不使用第三方 action（gautamkrishnar/keepalive-workflow 因违规已被 GitHub 停用）。
@@ -46,9 +46,9 @@ jobs:
         git commit -m "chore: keepalive"
         git push origin "HEAD:${GITHUB_REF_NAME:-main}"
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
-        node-version: '20'
+        node-version: '22'
     - name: Install Dependencies
       run: npm install
     - name: Run Renew Script
@@ -59,7 +59,7 @@ jobs:
       run: node action_renew.js
     - name: Upload Screenshots
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: screenshots
         path: screenshots/

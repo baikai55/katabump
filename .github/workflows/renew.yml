@@ -56,6 +56,8 @@ jobs:
         USERS_JSON: ${{ secrets.USERS_JSON }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         CHROME_PATH: 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+        TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
       run: node action_renew.js
     - name: Upload Screenshots
       if: always()

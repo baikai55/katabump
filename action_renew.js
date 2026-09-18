@@ -600,6 +600,33 @@ async function solveAltchaIfPresent(page, stageName = "Renew", maxAttempts = 15,
     return false;
 }
 
+// Read the REAL renewal outcome from the page.
+// The modal closing is NOT proof of success: the site also closes it after
+// showing "You can't renew your server yet". Only the page banner is reliable.
+async function detectRenewOutcome(page, maxWaitMs = 4000) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < maxWaitMs) {
+        try {
+            const notTime = page.getByText("You can't renew your server yet");
+            if (await notTime.isVisible().catch(() => false)) {
+                const text = await notTime.innerText().catch(() => '');
+                const match = text.match(/as of\s+(.*?)\s+\(/);
+                return { ok: false, notTime: true, date: match ? match[1] : 'Unknown Date' };
+            }
+        } catch (e) { }
+
+        try {
+            const renewed = page.getByText('Your service has been renewed', { exact: false });
+            if (await renewed.isVisible().catch(() => false)) {
+                return { ok: true, notTime: false, date: '' };
+            }
+        } catch (e) { }
+
+        await page.waitForTimeout(300);
+    }
+    return { ok: false, notTime: false, date: '' };
+}
+
 (async () => {
   // Random delay for scheduled runs (anti-detection)
   if (GITHUB_EVENT_NAME === 'schedule') {
@@ -904,10 +931,32 @@ async function solveAltchaIfPresent(page, stageName = "Renew", maxAttempts = 15,
                             continue; // 
                         }
 
-                        // F.  ()
-                        await page.waitForTimeout(2000);
-                        if (!await modal.isVisible()) {
-                            console.log('   >>  Modal closed. Renew successful!');
+                        // F. Verify the REAL outcome on the page (banner), never the modal state alone.
+                        const outcome = await detectRenewOutcome(page);
+
+                        if (outcome.notTime) {
+                            console.log(`   >>  : ${outcome.date}`);
+
+                            const fs = require('fs');
+                            const path = require('path');
+                            const photoDir = path.join(process.cwd(), 'screenshots');
+                            if (!fs.existsSync(photoDir)) fs.mkdirSync(photoDir, { recursive: true });
+                            const safeUser = user.username.replace(/[^a-z0-9]/gi, '_');
+                            const skipShotPath = path.join(photoDir, `${safeUser}_skip.png`);
+                            try { await page.screenshot({ path: skipShotPath, fullPage: true }); } catch (e) { }
+
+                            await sendTelegramMessage(`Not yet due\naccount: ${user.username}\ncannot renew until: ${outcome.date}`, skipShotPath);
+
+                            renewSuccess = true; // Mark as done to stop retries
+                            try {
+                                const closeBtn = modal.getByLabel('Close');
+                                if (await closeBtn.isVisible()) await closeBtn.click();
+                            } catch (e) { }
+                            break;
+                        }
+
+                        if (outcome.ok && !await modal.isVisible()) {
+                            console.log('   >>  Renew confirmed: "Your service has been renewed".');
 
                             // 
                             const fs = require('fs');
@@ -918,14 +967,17 @@ async function solveAltchaIfPresent(page, stageName = "Renew", maxAttempts = 15,
                             const successShotPath = path.join(photoDir, `${safeUser}_success.png`);
                             try { await page.screenshot({ path: successShotPath, fullPage: true }); } catch (e) { }
 
-                            await sendTelegramMessage(` **\n: ${user.username}\n: `, successShotPath);
+                            await sendTelegramMessage(`Renewed successfully\naccount: ${user.username}`, successShotPath);
                             renewSuccess = true;
                             break;
-                        } else {
+                        } else if (await modal.isVisible()) {
                             console.log('   >> ...');
                             await page.reload();
                             await page.waitForTimeout(3000);
                             continue;
+                        } else {
+                            console.log('   >>  Modal closed but no confirmation banner found. NOT counting as success.');
+                            break;
                         }
                     } else {
                         console.log('   >> ...');

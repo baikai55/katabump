@@ -2,66 +2,62 @@ name: Katabump Auto Renew
 
 on:
   schedule:
-  # 每天 UTC 0点 (北京时间 8点) 运行
-  - cron: '0 0 * * *'
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
-  workflow_dispatch: # 允许手动触发
-
-
-# GitHub 会在公开仓库连续 60 天没有提交活动后自动停用 schedule 工作流，
-# 而定时任务自身的运行不算仓库活动，因此需要一个写入权限来产生真实提交。
 permissions:
   contents: write
 
-
 jobs:
   renew:
-    runs-on: windows-latest
-
-
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
-    - name: Keepalive
-      # 距上次提交满 30 天时补一次提交，重置 GitHub 的 60 天计时器。
-      # 不使用第三方 action（gautamkrishnar/keepalive-workflow 因违规已被 GitHub 停用）。
-      continue-on-error: true
-      shell: bash
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Checkout
+        uses: actions/checkout@v7
 
-        NOW_TS=$(date +%s)
-        LAST_TS=$(git log -1 --format=%ct)
-        IDLE_DAYS=$(( (NOW_TS - LAST_TS) / 86400 ))
-        echo "Last commit was ${IDLE_DAYS} day(s) ago."
+      - name: Keepalive
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          NOW_TS=$(date +%s)
+          LAST_TS=$(git log -1 --format=%ct)
+          IDLE_DAYS=$(( (NOW_TS - LAST_TS) / 86400 ))
+          echo "Last commit was ${IDLE_DAYS} day(s) ago."
+          if [ "${IDLE_DAYS}" -lt 30 ]; then
+            echo "Recent activity detected, skipping keepalive commit."
+            exit 0
+          fi
+          echo "Idle for ${IDLE_DAYS} days, creating keepalive commit."
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
+          git add .keepalive
+          git commit -m "chore: keepalive"
+          git push origin "HEAD:${GITHUB_REF_NAME:-main}"
 
-        if [ "${IDLE_DAYS}" -lt 30 ]; then
-          echo "Recent activity detected, skipping keepalive commit."
-          exit 0
-        fi
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
 
-        echo "Idle for ${IDLE_DAYS} days, creating keepalive commit."
-        date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
-        git add .keepalive
-        git commit -m "chore: keepalive"
-        git push origin "HEAD:${GITHUB_REF_NAME:-main}"
-    - name: Setup Node.js
-      uses: actions/setup-node@v7
-      with:
-        node-version: '22'
-    - name: Install Dependencies
-      run: npm install
-    - name: Run Renew Script
-      env:
-        USERS_JSON: ${{ secrets.USERS_JSON }}
-        GITHUB_EVENT_NAME: ${{ github.event_name }}
-        CHROME_PATH: 'C:\Program Files\Google\Chrome\Application\chrome.exe'
-        TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-        TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-      run: node action_renew.js
-    - name: Upload Screenshots
-      if: always()
-      uses: actions/upload-artifact@v7
-      with:
-        name: screenshots
-        path: screenshots/
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb x11-utils xdotool scrot fonts-noto-cjk
+          pip install seleniumbase requests
+          seleniumbase install chromedriver
+
+      - name: Run Renew Script
+        env:
+          USERS_JSON: ${{ secrets.USERS_JSON }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python3 app.py
+
+      - name: Upload Screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: '*.png'
+          if-no-files-found: warn

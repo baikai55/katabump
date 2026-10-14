@@ -794,6 +794,16 @@ async function detectRenewOutcome(page, maxWaitMs = 4000) {
                 await page.getByRole('link', { name: 'See' }).first().click();
             } catch (e) {
                 console.log(' "See" ');
+                try { console.log('[DEBUG] see-fail url=' + page.url()); } catch (_) { }
+                try { console.log('[DEBUG] see-fail title=' + await page.title()); } catch (_) { }
+                try { console.log('[DEBUG] see-fail body=' + (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 700)); } catch (_) { }
+                try {
+                    const fs2 = require('fs');
+                    const path2 = require('path');
+                    const dir2 = path2.join(process.cwd(), 'screenshots');
+                    if (!fs2.existsSync(dir2)) fs2.mkdirSync(dir2, { recursive: true });
+                    await page.screenshot({ path: path2.join(dir2, `${user.username.replace(/[^a-z0-9]/gi, '_')}_noserverlist.png`), fullPage: true });
+                } catch (_) { }
                 continue;
             }
 

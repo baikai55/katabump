@@ -1,134 +1,83 @@
-# Katabump Server Auto-Renewal Tool
+# katabump 自动续期（GitHub Actions）
 
-基于[XCQ0607/katabump](https://github.com/XCQ0607/katabump)优化：增加singbox全协议代理、随机时间签到、**ALTCHA验证码自动绕过**
+基于 GitHub Actions 的定时脚本，自动登录 [katabump](https://dashboard.katabump.com) 并续期免费服务器，避免因为忘记续期（每 4 天一次）导致服务器被停用/删除。
 
-### 重要提醒：提示 未找到"See" 按钮...说明代理ip质量有问题，请按要求添加、更换
-
-## 🚀 GitHub Actions 云端运行 (推荐)
-
-这是最省心的方式，配置一次即可每天自动执行。
-
-1. **Fork 本仓库** 到你的 GitHub 账号。
-2. 进入你的仓库，点击 **Settings** -> **Secrets and variables** -> **Actions**。
-3. 点击 **New repository secret**，添加一个名为 `USERS_JSON` 的 Secret。
-4. **Value** 的格式必须是 JSON 数组（请尽量压缩为一行）：
-   ```json
-   [{"username": "your_email@example.com", "password": "your_password"}, {"username": "another@example.com", "password": "pwd"}]
-   ```
-5. **(可选) 配置代理**:
-
-  支持两种代理方式：
-
-  **全协议代理 (推荐)**
-  添加名为 `PROXY_URL` 的 Secret，支持 vmess、vless、hy2、tuic、socks5 等所有主流协议。
-  脚本会自动下载 sing-box 并在本地启动 HTTP 代理，无需手动配置。
-  - **格式示例**:
-    - vmess: `vmess://base64EncodedJSON`
-    - vless: `vless://uuid@host:port?security=tls&type=ws&...#name`
-    - hy2: `hy2://password@host:port?sni=xxx`
-    - socks5: `socks5://user:pass@host:port`
-
-6. **(可选) Telegram 消息推送**:
-   如果你希望在续期成功、失败或跳过时收到 Telegram 通知（包含截图），请配置以下 Secret：
-   - `TG_BOT_TOKEN`: 你的 Telegram Bot Token (从 @BotFather 获取)。
-   - `TG_CHAT_ID`: 你的 Chat ID (用户 ID 或群组 ID)。
-   > 如果未配置，脚本将跳过发送通知。
-
-### 4. 运行结果与截图
-
-- **运行日志**: 在 Actions 中的 `Run Renew Script` 步骤查看。
-- **截图留存**: 每次运行（无论成功与否），通过 `Upload Screenshots` 步骤自动上传截图。
-  - 你可以在 Workflow 运行详情页的 **Artifacts** 区域下载 `screenshots` 压缩包。
-  - 每个账号对应一张截图（`username.png`），方便确认状态。
-
-5. 保存后，进入 **Actions** 页面，启用 Workflow。它会在**每天北京时间 08:00 (UTC 00:00)** 自动运行。
-6. 你也可以手动点击 "Run workflow" 立即测试。
-7. **随机延迟**: 定时任务触发时，脚本会随机延迟 0-3 小时后执行，防止被目标站识别为自动化。手动触发时不会有延迟，立即执行。
+支持多账号（`USERS_JSON`）、Telegram 通知。
 
 ---
 
-## 💻 Windows 本地运行指南
+## 工作原理
 
-如果你想在本地观察运行过程或进行调试，请按以下步骤操作。
+- **Runner**：`ubuntu-latest`
+- **脚本**：`app.py`（Python 3.12 + [seleniumbase](https://github.com/seleniumbase/SeleniumBase)）
+- **过盾**：登录页有 Cloudflare Turnstile，脚本用 seleniumbase 的 **UC 模式**（`uc_gui_click_captcha`）在虚拟显示（xvfb）里**真实点击**验证框，而不是伪造点击事件
+- **调度**：每天 UTC 00:00（北京时间 08:00）检查一次，未到续期窗口会自动跳过，不推送通知
 
-### 1. 环境准备
-
-确保你已经安装了 [Node.js](https://nodejs.org/) (建议版本 v18+)。
-
-### 2. 安装依赖
-
-在项目根目录打开终端 (PowerShell 或 CMD)，运行：
-
-```bash
-npm install
-```
-
-### 3. 配置账号
-
-项目中有一个 `login.json.template` 模板文件。
-
-1. 将其**重命名**为 `login.json`。
-2. 用记事本或编辑器打开，填入你的账号密码：
-   ```json
-   [
-       {
-           "username": "myemail@gmail.com",
-           "password": "mypassword123"
-       }
-   ]
-   ```
-
-   > **注意**: `login.json` 已被加入 `.gitignore`，不会被上传到 GitHub，请放心使用。
-   >
-
-### 4. 配置 Chrome 路径
-
-打开 `renew.js` 文件，找到第 11-12 行：
-
-```javascript
-const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const USER_DATA_DIR = path.join(__dirname, 'ChromeData_Katabump');
-const HEADLESS = true;
-```
-
-* **CHROME_PATH**: 这是你本地 Chrome 浏览器的安装路径。如果你的安装位置不同，请务必修改！
-* **USER_DATA_DIR**:
-  * 这是一个用于存放 Script 运行时产生的浏览器数据（缓存、Cookie、登录状态等）的文件夹。
-  * **作用**: 它能让你的登录状态保持更久，不需要每次运行都重新输入密码。
-  * **能不能删？**: **可以删**。如果你想要重置所有状态（彻底清除缓存），只需删除这个文件夹即可。脚本下次运行时会自动重新创建它。
-* **HEADLESS**:
-  * `false`: 脚本运行时会弹出一个 Chrome 窗口，你可以看到它在做什么。
-  * `true`: (默认)脚本在后台无头运行，界面不可见（适合只想静默完成任务时开启）。
-
-### 3. 运行脚本
-
-如果你需要使用代理运行脚本，请设置环境变量 `HTTP_PROXY`：
-
-**Powershell:**
-```powershell
-$env:HTTP_PROXY="http://user:pass@127.0.0.1:7890"
-node renew.js
-```
-
-**CMD:**
-```cmd
-set HTTP_PROXY=http://user:pass@127.0.0.1:7890
-node renew.js
-```
-
-如果不设置代理，直接运行：
-```bash
-node renew.js
-```
-
-脚本会自动启动 Chrome (如果需要)，逐个处理账号，并在根目录下的 `photo/` 文件夹中保存每个账号运行结束时的截图（`账号名.png`）。窗口（默认无头模式为 false，你可以看到操作过程），并依次为列表中的用户续期。
+> ⚠️ Turnstile 对出口 IP 敏感。GitHub 机房 IP 目前可以直连通过；如果哪天过不去了，配置 `HTTP_PROXY`（干净节点）即可。
 
 ---
 
-## 🛠️ 项目结构
+## Secrets 配置
 
-* `renew.js`: Windows 本地运行的主程序。
-* `action_renew.js`: 专门用于 GitHub Actions 环境的脚本（适配 Linux/Headless），支持随机延迟和 sing-box 代理。
-* `proxy_handler.py`: 代理协议解析器，将 vmess/vless/hy2/tuic/socks5 等协议转换为 sing-box 配置。
-* `.github/workflows/renew.yml`: GitHub Actions 的定时任务配置文件。
-* `login.json`: (需手动创建) 存放本地运行的账号信息。
+仓库 `Settings → Secrets and variables → Actions`：
+
+| Secret 名称 | 是否必填 | 说明 |
+|---|---|---|
+| `USERS_JSON` | 必填 | 多账号 JSON 数组，格式见下 |
+| `TG_BOT_TOKEN` | 可选 | Telegram Bot Token，用于推送续期结果 |
+| `TG_CHAT_ID` | 可选 | 接收通知的 Chat ID |
+| `HTTP_PROXY` | 可选 | 代理地址（如 `http://user:pass@host:port`），过盾失败时再加 |
+
+### USERS_JSON 格式
+
+```json
+[
+  {"username": "your_email@example.com", "password": "your_password"},
+  {"username": "another@example.com", "password": "pwd"}
+]
+```
+
+脚本会为每个账号独立开一个浏览器会话，依次登录并续期。
+
+### Telegram 通知
+
+- **续期成功** → ✅ 推送
+- **登录失败** → ❌ 推送
+- **未到续期时间** → 不推送（避免每天刷屏）
+
+想要拿到 `TG_CHAT_ID`：先给 Bot 发一条 `/start`，然后访问
+`https://api.telegram.org/bot<你的TOKEN>/getUpdates` 查 `chat.id`。
+
+---
+
+## 手动触发
+
+`Actions → Katabump Auto Renew → Run workflow`。
+
+---
+
+## 文件说明
+
+| 文件 | 说明 |
+|---|---|
+| `app.py` | 续期主脚本（登录、过 Turnstile、续期、TG 通知） |
+| `.github/workflows/renew.yml` | 工作流：环境准备 → 运行脚本 → 上传截图 |
+
+失败时的截图会作为 artifact `screenshots` 上传（如 `login_turnstile_fail.png`、`servers_page_fail.png`）。
+
+---
+
+## 重要提醒
+
+1. **不要用 fork 跑这个**。
+   GitHub 会主动禁用 fork 仓库里的定时工作流（提示 *Workflows on this fork have been disabled*），导致续期静默中断。本仓库已经通过 **Settings → Danger Zone → Leave fork network** 脱离 fork，变成独立仓库。
+2. **60 天无活动会禁用定时任务**。
+   独立仓库同样会因为「60 天无仓库活动」被自动禁用。工作流里的 `Keepalive` 步骤会在空闲满 30 天时自动补一个提交，规避这条规则。
+3. **脚本退出码永远是 0**。
+   单个账号失败不会让整个 run 变红，所以**不要只依赖邮件报警**，请留意 Telegram 通知或 run 日志。
+
+---
+
+## 鸣谢
+
+过盾与续期方案参考自 [eooce/katabump-renew](https://github.com/eooce/katabump-renew) 与 [zv201413/katabump](https://github.com/zv201413/katabump)。

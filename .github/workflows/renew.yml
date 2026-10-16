@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      tg_test:
+        description: '只发送一条 Telegram 测试消息后退出'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,7 +44,23 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Telegram Test
+        if: ${{ inputs.tg_test }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          if [ -z "$TG_BOT_TOKEN" ] || [ -z "$TG_CHAT_ID" ]; then
+            echo "TG_BOT_TOKEN / TG_CHAT_ID 未配置"
+            exit 1
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TG_CHAT_ID}" \
+            -d "text=katabump 续期脚本 TG 自检消息 ✅" | head -c 400
+          echo
+
       - name: Install Dependencies
+        if: ${{ !inputs.tg_test }}
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb x11-utils xdotool scrot fonts-noto-cjk
@@ -47,6 +68,7 @@ jobs:
           seleniumbase install chromedriver
 
       - name: Run Renew Script
+        if: ${{ !inputs.tg_test }}
         env:
           USERS_JSON: ${{ secrets.USERS_JSON }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
@@ -55,7 +77,7 @@ jobs:
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python3 app.py
 
       - name: Upload Screenshots
-        if: always()
+        if: ${{ always() && !inputs.tg_test }}
         uses: actions/upload-artifact@v7
         with:
           name: screenshots
